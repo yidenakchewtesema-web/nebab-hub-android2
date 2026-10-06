@@ -1,0 +1,32 @@
+workflows:
+  android-build:
+    name: Nebab Hub APK and AAB
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      java: 17
+    scripts:
+      - name: Accept Android licenses
+        script: |
+          yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Install Gradle 8.14.3
+        script: |
+          curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-8.14.3/bin" >> $CM_ENV_PATH_FILE 2>/dev/null || true
+
+      - name: Create test signing key
+        script: |
+          keytool -genkeypair -v -keystore app/release.jks -alias nebab \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass nebab12345 -keypass nebab12345 \
+            -dname "CN=Nebab Hub, O=Nebab, C=ET"
+
+      - name: Build APK and AAB
+        script: |
+          /tmp/gradle-8.14.3/bin/gradle assembleRelease bundleRelease --no-daemon
+
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
